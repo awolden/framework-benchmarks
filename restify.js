@@ -1,11 +1,28 @@
+'use strict';
 
-var restify = require('restify'), // require the restify library.
-  server = restify.createServer(); // create an HTTP server.
+const restify = require('restify'),
+    server = restify.createServer(),
+    cluster = require('cluster'),
+    argv = require('minimist')(process.argv.slice(2));
 
-server.get('/hello', function (req, res) {
-  res.send('Hello, World!');
-});
+let procs = argv.p || 1;
 
-server.listen(process.env.PORT || 3000, function () { // bind server to port 5000.
-  console.log('%s listening at %s', server.name, server.url);
-});
+if (cluster.isMaster) {
+
+    for (var i = 0; i < procs; i++) {
+        cluster.fork();
+    }
+
+    cluster.on('death', function (worker) {
+        console.log('worker ' + worker.pid + ' died');
+    });
+}
+else {
+    server.get('/', function (req, res) {
+        res.send('Hello, World!');
+    });
+
+    server.listen(process.env.PORT || 3000, function () { // bind server to port 5000.
+        console.log('%s listening at %s', server.name, server.url);
+    });
+}
